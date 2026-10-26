@@ -1,99 +1,153 @@
 import streamlit as st
-import pandas as pd
 
 # Page Configuration
-st.set_page_config(page_title="ক্লিনিক্যাল ডিসিশন সাপোর্ট সিস্টেম", page_icon="🩺", layout="wide")
+st.set_page_config(page_title="ডিজিটাল ডায়াগনসিস ও ট্রিটমেন্ট সাপোর্ট", page_icon="🩺", layout="wide")
 
-# App Header
-st.title("🩺 ডিজিটাল ডায়াগনসিস ও ট্রিটমেন্ট সাপোর্ট সিস্টেম (CDSS)")
-st.subheader("প্রাথমিক রোগ নির্ণয়, ল্যাব টেস্ট অ্যানালাইসিস এবং চিকিৎসা গাইডলাইন")
+# Custom CSS for Professional Look
+st.markdown("""
+    <style>
+    .main-title { font-size:28px !important; font-weight: bold; color: #1E3A8A; text-align: center; }
+    .section-header { font-size:20px !important; font-weight: bold; color: #0F766E; margin-top: 20px; }
+    .report-card { padding: 15px; border-radius: 10px; background-color: #F3F4F6; margin-bottom: 15px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.markdown('<p class="main-title">🩺 ডিজিটাল ডায়াগনসিস ও ট্রিটমেন্ট সিস্টেম (Advanced CDSS)</p>', unsafe_allow_html=True)
 st.write("---")
 
-# 1. Database Creation (Based on Excel Logic)
-disease_data = {
-    "ডেঙ্গু (Dengue)": {
-        "symptoms": "তীব্র জ্বর, চোখের পেছনে ব্যথা, শরীরে লাল র‍্যাশ, তীব্র জয়েন্ট পেইন।",
-        "test": "Dengue NS1 Antigen / CBC (Platelet Count)",
-        "criteria": "NS1 Positive অথবা Platelet < 100,000",
-        "treatment": "১. সম্পূর্ণ বেড রেস্ট।\n২. প্রচুর তরল খাবার ও খাবার স্যালাইন (ORSaline) পান করা।\n৩. জ্বর ও ব্যথার জন্য শুধু Paracetamol (500mg-1g) সর্বোচ্চ দিনে ৪ বার। (🚨 কোনোভাবেই NSAID বা ব্যথানাশক যেমন Ibuprofen/Diclofenac দেওয়া যাবে না)।"
-    },
-    "টাইফয়েড (Typhoid)": {
-        "symptoms": "ধাপ-ধাপ জ্বর বৃদ্ধি, কোষ্ঠকাঠিন্য বা ডায়রিয়া, লিভার ও প্লীহা বড় হওয়া।",
-        "test": "Typhidot (IgM/IgG) / Blood Culture",
-        "criteria": "Typhidot IgM Positive",
-        "treatment": "১. পর্যাপ্ত পানি ও পুষ্টিকর তরল খাবার।\n২. রেজিস্টার্ড ডাক্তারের পরামর্শে অ্যান্টিবায়োটিক (যেমন: Azithromycin বা Cefixime) কোর্স সম্পন্ন করা।\n৩. জ্বরের জন্য Paracetamol।"
-    },
-    "রক্তস্বল্পতা (Anemia)": {
-        "symptoms": "দুর্বলতা, ফ্যাকাশে চামড়া, অল্প পরিশ্রমে হাঁপিয়ে যাওয়া, মাথা ঘোরা।",
-        "test": "Hemoglobin (Hb) Level (CBC)",
-        "criteria": "Hb < 12 g/dL (নারী) অথবা < 13.5 g/dL (পুরুষ)",
-        "treatment": "১. আয়রন ও ফলিক অ্যাসিড সমৃদ্ধ খাবার (কলা, কচুশাক, কলিজা, ডিম) খাওয়া।\n২. চিকিৎসকের পরামর্শে Iron Supplement বা সিরাপ সেবন করা।\n৩. ভিটামিন সি যুক্ত খাবার খাওয়া (যা আয়রন শোষণ বাড়ায়)।"
-    },
-    "ইউটিআই (UTI - Urinary Tract Infection)": {
-        "symptoms": "প্রস্রাবে তীব্র জ্বালাপোড়া, ঘন ঘন প্রস্রাবের বেগ, তলপেটে ব্যথা, হালকা জ্বর।",
-        "test": "Urine RE (Routine Examination) / Culture",
-        "criteria": "Pus Cells > 5-10 / HPF",
-        "treatment": "১. প্রতিদিন ৩-৪ লিটার পানি পান করা।\n২. ক্র্যানবেরি জুস খাওয়া উপকারী।\n৩. চিকিৎসকের পরামর্শে নির্দিষ্ট অ্যান্টিবায়োটিক (যেমন: Nitrofurantoin বা Ciprofloxacin) সঠিক ডোজে খাওয়া।"
-    },
-    "উচ্চ রক্তচাপ (Hypertension)": {
-        "symptoms": "ঘাড়ের পেছনে ব্যথা, মাথা ঘোরা, বুক ধড়ফড় করা, অনিদ্রা।",
-        "test": "BP Measurement (Sphygmomanometer)",
-        "criteria": "Systolic ≥ 140 mmHg অথবা Diastolic ≥ 90 mmHg",
-        "treatment": "১. খাবারে কাঁচা লবণ সম্পূর্ণ বন্ধ করা।\n২. চর্বিযুক্ত খাবার এড়িয়ে চলা এবং প্রতিদিন ৩০ মিনিট হাঁটা।\n৩. চিকিৎসকের পরামর্শ অনুযায়ী নিয়মিত প্রেশারের ওষুধ (যেমন: Amlodipine বা Losartan) নির্দিষ্ট সময়ে সেবন।"
-    },
-    "গ্যাস্ট্রিক (Peptic Ulcer)": {
-        "symptoms": "বুক জ্বালাপোড়া করা, খালি পেটে বা ভরা পেটে পেটের উপরিভাগে তীব্র ব্যথা, টক ঢেকুর।",
-        "test": "Endoscopy of UGI / H. Pylori Stool Antigen",
-        "criteria": "H. Pylori Positive বা Endoscopy তে Ulcer ধরা পড়া",
-        "treatment": "১. ভাজা পোড়া, ঝাল এবং তৈলাক্ত খাবার সম্পূর্ণ বর্জন করা।\n২. সময়মতো খাবার খাওয়া এবং খালি পেটে না থাকা।\n৩. চিকিৎসকের পরামর্শে Antacid এবং PPI (যেমন: Esomeprazole বা Omeprazole) খাবারের ২০ মিনিট আগে সেবন।"
-    }
-}
-
-# 2. Sidebar - Patient Info
+# 1. Sidebar - Patient Profile
 st.sidebar.header("👤 রোগীর তথ্য (Patient Profile)")
-patient_name = st.sidebar.text_input("রোগীর নাম", placeholder="উদা: আব্দুল করিম")
-patient_age = st.sidebar.number_input("বয়স", min_value=1, max_value=120, value=30)
+patient_name = st.sidebar.text_input("রোগীর নাম", value="আব্দুল করিম")
+patient_age = st.sidebar.number_input("বয়স", min_value=1, max_value=120, value=35)
 patient_gender = st.sidebar.selectbox("লিঙ্গ", ["পুরুষ", "নারী", "অন্যান্য"])
 
-# 3. Step 1: Preliminary Screening
-st.header("📋 ধাপ ১: প্রাথমিক স্ক্রিনিং ও টেস্ট সিলেকশন")
-selected_disease = st.selectbox("সম্ভাব্য রোগটি নির্বাচন করুন:", list(disease_data.keys()))
+# 2. Disease Selector
+st.markdown('<p class="section-header">📋 ধাপ ১: প্রাথমিক স্ক্রিনিং ও টেস্ট সিলেকশন</p>', unsafe_allow_html=True)
+diseases = [
+    "ডেঙ্গু (Dengue Fever)", 
+    "রক্তস্বল্পতা (Anemia)", 
+    "ইউটিআই (UTI)", 
+    "উচ্চ রক্তচাপ (Hypertension)",
+    "জন্ডিস (Acute Jaundice / Hepatitis)",
+    "হার্ট অ্যাটাক (Acute Myocardial Infarction - Emergency)"
+]
+selected_disease = st.selectbox("সম্ভাব্য রোগটি নির্বাচন করুন:", diseases)
 
-if selected_disease:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.info(f"**🚨 প্রধান প্রধান লক্ষণসমূহ:**\n\n{disease_data[selected_disease]['symptoms']}")
-    with col2:
-        st.warning(f"**🔬 প্রয়োজনীয় ল্যাব টেস্ট:**\n\n**{disease_data[selected_disease]['test']}**\n\n*(পজিটিভ মানদণ্ড: {disease_data[selected_disease]['criteria']})*")
+# 3. Dynamic Logic Based on Selection
+if selected_disease == "ডেঙ্গু (Dengue Fever)":
+    st.info("**🚨 প্রধান লক্ষণ:** তীব্র জ্বর, চোখের পেছনে ব্যথা, শরীরে লাল র‍্যাশ, জয়েন্ট পেইন।")
+    st.warning("**🔬 প্রয়োজনীয় ল্যাব টেস্ট:** CBC (Platelet Count) এবং Dengue NS1 Antigen")
+    
+    st.markdown('<p class="section-header">🧪 ধাপ ২: ল্যাব রিপোর্টের সঠিক মান ইনপুট দিন</p>', unsafe_allow_html=True)
+    ns1 = st.selectbox("Dengue NS1 Antigen এর ফলাফল কী?", ["Select...", "Positive", "Negative"])
+    platelet = st.number_input("Platelet Count (প্লেটলেট সংখ্যা) লিখুন:", min_value=1000, max_value=600000, value=150000, step=1000)
+    
+    # Diagnosis Logic
+    is_positive = (ns1 == "Positive") or (platelet < 100000)
+    criteria_msg = f"NS1: {ns1}, Platelet: {platelet:,}"
+
+    treatment = """১. সম্পূর্ণ বেড রেস্ট এবং প্রতি ২ ঘণ্টা পর পর তরল খাবার (ডাবের পানি, জুস, খাবার স্যালাইন) পান করা।
+২. শুধু Paracetamol (500mg বা 665mg) সর্বোচ্চ দিনে ৪ বার। (🚨 কোনো অবস্থাতেই ব্যথানাশক যেমন Ibuprofen/Diclofenac বা Aspirin দেওয়া যাবে না)।
+৩. প্লেটলেট ৫০ হাজারের নিচে নামলে বা মাড়ি/নাক দিয়ে রক্তপাত হলে দ্রুত হাসপাতালে ভর্তি করুন।"""
+
+elif selected_disease == "রক্তস্বল্পতা (Anemia)":
+    st.info("**🚨 প্রধান লক্ষণ:** শরীর ফ্যাকাশে হওয়া, প্রচণ্ড দুর্বলতা, অল্পতে হাঁপিয়ে যাওয়া, মাথা ঘোরা।")
+    st.warning("**🔬 প্রয়োজনীয় ল্যাব টেস্ট:** Hemoglobin (Hb) Level (CBC রিপোর্ট থেকে)")
+    
+    st.markdown('<p class="section-header">🧪 ধাপ ২: ল্যাব রিপোর্টের সঠিক মান ইনপুট দিন</p>', unsafe_allow_html=True)
+    hb_level = st.number_input("হিমোগ্লোবিন (Hb) এর মান লিখুন (g/dL):", min_value=1.0, max_value=20.0, value=13.0, step=0.1)
+    
+    if patient_gender == "নারী":
+        is_positive = hb_level < 12.0
+    else:
+        is_positive = hb_level < 13.5
+    criteria_msg = f"হিমোগ্লোবিনের মান: {hb_level} g/dL"
+    
+    treatment = """১. আয়রন সমৃদ্ধ খাবার (কলিজা, ডিমের কুসুম, কচুশাক, ডালিম, আপেল) বেশি খেতে হবে।
+২. চিকিৎসকের পরামর্শ অনুযায়ী Iron Supplement (ক্যাপসুল বা সিরাপ) এবং সাথে Vitamin C খেতে হবে (যা আয়রন শোষণ বাড়ায়)।
+৩. কৃমির সংক্রমণ থাকলে চিকিৎসকের পরামর্শে অ্যান্থেলমিন্টিক (কৃমির ওষুধ) সেবন করতে হবে।"""
+
+elif selected_disease == "ইউটিআই (UTI)":
+    st.info("**🚨 প্রধান লক্ষণ:** প্রস্রাবে তীব্র জ্বালাপোড়া, তলপেটে ব্যথা, ঘন ঘন প্রস্রাবের বেগ, হালকা জ্বর।")
+    st.warning("**🔬 প্রয়োজনীয় ল্যাব টেস্ট:** Urine RE (Routine Examination)")
+    
+    st.markdown('<p class="section-header">🧪 ধাপ ২: ল্যাব রিপোর্টের সঠিক মান ইনপুট দিন</p>', unsafe_allow_html=True)
+    pus_cells = st.number_input("Urine RE রিপোর্টে Pus Cells এর সংখ্যা কত? (per HPF):", min_value=0, max_value=100, value=3)
+    
+    is_positive = pus_cells > 5
+    criteria_msg = f"Pus Cells: {pus_cells}/HPF"
+    
+    treatment = """১. দৈনিক ৩ থেকে ৪ লিটার নিরাপদ পানি পান নিশ্চিত করতে হবে।
+২. প্রস্রাব দীর্ঘক্ষণ চেপে রাখা যাবে না এবং ব্যক্তিগত পরিচ্ছন্নতা বজায় রাখতে হবে।
+৩. চিকিৎসকের পরামর্শ অনুযায়ী একটি নির্দিষ্ট অ্যান্টিবায়োটিক (যেমন: Nitrofurantoin) এর পূর্ণ কোর্স সম্পন্ন করতে হবে।"""
+
+elif selected_disease == "উচ্চ রক্তচাপ (Hypertension)":
+    st.info("**🚨 প্রধান লক্ষণ:** ঘাড়ের পেছনে ব্যথা, মাথা ঘোরানো, বুক ধড়ফড় করা, রাতে ঘুম না হওয়া।")
+    st.warning("**🔬 প্রয়োজনীয় টেস্ট:** প্রেশার মাপার মেশিন (Sphygmomanometer) দিয়ে ৩ বার রিডিং নিন।")
+    
+    st.markdown('<p class="section-header">🧪 ধাপ ২: টেস্টের সঠিক মান ইনপুট দিন</p>', unsafe_allow_html=True)
+    systolic = st.number_input("Systolic (উপরের প্রেশার) mmHg:", min_value=70, max_value=250, value=120)
+    diastolic = st.number_input("Diastolic (নিচের প্রেশার) mmHg:", min_value=40, max_value=150, value=80)
+    
+    is_positive = (systolic >= 140) or (diastolic >= 90)
+    criteria_msg = f"BP: {systolic}/{diastolic} mmHg"
+    
+    treatment = """১. তরকারিতে বা ভাতে বাড়তি কাঁচা লবণ খাওয়া সম্পূর্ণ বন্ধ করতে হবে।
+২. চর্বিযুক্ত ও তৈলাক্ত খাবার (খাসি/গরুর মাংস, ডালডা) পরিহার করতে হবে এবং দৈনিক ৩০ মিনিট দ্রুত হাঁটতে হবে।
+৩. প্রেশার নিয়ন্ত্রণে না এলে ডাক্তারের পরামর্শে নিয়মিত Antihypertensive ওষুধ (যেমন: Amlodipine) শুরু করতে হবে এবং কখনোই ওষুধ নিজে থেকে বন্ধ করা যাবে না।"""
+
+elif selected_disease == "জন্ডিস (Acute Jaundice / Hepatitis)":
+    st.info("**🚨 প্রধান লক্ষণ:** চোখ ও প্রস্রাব হলুদ হওয়া, খাবারে তীব্র অরুচি, বমি বমি ভাব, ডান পেটের উপরিভাগে ব্যথা।")
+    st.warning("**🔬 প্রয়োজনীয় ল্যাব টেস্ট:** Serum Bilirubin এবং SGPT (ALT)")
+    
+    st.markdown('<p class="section-header">🧪 ধাপ ২: ল্যাব রিপোর্টের সঠিক মান ইনপুট দিন</p>', unsafe_allow_html=True)
+    bilirubin = st.number_input("Serum Bilirubin এর মান লিখুন (mg/dL):", min_value=0.1, max_value=30.0, value=1.0, step=0.1)
+    
+    is_positive = bilirubin > 1.2
+    criteria_msg = f"Bilirubin: {bilirubin} mg/dL"
+    
+    treatment = """১. সম্পূর্ণ শারীরিক ও মানসিক বিশ্রামে থাকতে হবে (Bed Rest)।
+২. তেল-মসলা ছাড়া সহজপাচ্য শর্করা জাতীয় খাবার খেতে হবে। (🚨 কবিরাজি ওষুধ বা অতিরিক্ত ডাবের পানি/আখের রস খাওয়া থেকে বিরত থাকুন)।
+৩. বমি বা তীব্র পেট ব্যথা থাকলে অবিলম্বে হাসপাতালে নিয়ে সিরাম মার্কার টেস্ট (HBsAg, Anti-HAV) করাতে হবে।"""
+
+elif selected_disease == "হার্ট অ্যাটাক (Acute Myocardial Infarction - Emergency)":
+    st.info("**🚨 প্রধান লক্ষণ:** বুকের মাঝখানে প্রচণ্ড ভারী বা মোচড়ানো ব্যথা, যা বাম হাত, ঘাড় বা চোয়ালে ছড়ায়; সাথে ঠাণ্ডা ঘাম ও শ্বাসকষ্ট।")
+    st.warning("**🔬 প্রয়োজনীয় টেস্ট:** ইমার্জেন্সি ECG এবং Troponin-I টেস্ট।")
+    
+    st.markdown('<p class="section-header">🧪 ধাপ ২: ল্যাব ও ক্লিনিক্যাল লক্ষণ ইনপুট দিন</p>', unsafe_allow_html=True)
+    ecg_change = st.selectbox("ECG রিপোর্টে কি ST-Elevation বা কোনো পরিবর্তন আছে?", ["Select...", "Yes - Ischemia/Infarction", "No Change"])
+    troponin = st.number_input("Troponin-I এর মান লিখুন (ng/mL):", min_value=0.0, max_value=50.0, value=0.01, step=0.01)
+    
+    is_positive = (ecg_change == "Yes - Ischemia/Infarction") or (troponin > 0.04)
+    criteria_msg = f"ECG: {ecg_change}, Troponin: {troponin} ng/mL"
+    
+    treatment = """🚨 এটি একটি মেডিকেল ইমার্জেন্সি! অবিলম্বে রোগীকে সিসিইউ (CCU) সুবিধাযুক্ত কার্ডিয়াক হাসপাতালে স্থানান্তর করুন।
+প্রাথমিক ফার্স্ট-এইড (ডাক্তারের পরামর্শ সাপেক্ষে):
+১. Tab. Aspirin 300mg + Tab. Clopidogrel 300mg একসাথে চিবিয়ে খাইয়ে দিন।
+২. Tab. Atorvastatin 80mg খাইয়ে দিন।
+৩. জিহ্বার নিচে Nitroglycerin Spray (যদি রক্তচাপ স্বাভাবিক থাকে) ১/২ পাফ দিন।"""
 
 st.write("---")
 
-# 4. Step 2: Lab Report Input
-st.header("🧪 ধাপ ২: ল্যাব রিপোর্টের ফলাফল ইনপুট")
-st.write(f"অনুগ্রহ করে **{disease_data[selected_disease]['test']}** এর রিপোর্ট চেক করুন।")
+# 4. Step 3: Automated Diagnosis Dashboard & Summary Sheet
+st.markdown('<p class="section-header">💊 ধাপ ৩: চূড়ান্ত ডায়াগনসিস ও প্রেসক্রিপশন সামারি</p>', unsafe_allow_html=True)
 
-report_status = st.radio(
-    "রিপোর্টের ফলাফল কি পজিটিভ / নির্ধারিত মানদণ্ডের বাইরে এসেছে?",
-    ("নির্বাচন করুন...", "হ্যাঁ (Positive / Out of Range)", "না (Negative / Normal)"),
-    index=0
-)
-
-st.write("---")
-
-# 5. Step 3: Final Diagnosis & Medical Guidelines
-st.header("💊 ধাপ ৩: চূড়ান্ত ডায়াগনসিস ও চিকিৎসাপত্র গাইডলাইন")
-
-if report_status == "হ্যাঁ (Positive / Out of Range)":
-    st.success(f"### 🎯 চূড়ান্ত রোগ: {selected_disease} নিশ্চিত (CONFIRMED)")
+if is_positive:
+    st.error(f"### 🎯 নিশ্চিত রোগ (Confirmed Diagnosis): {selected_disease}")
     
-    st.markdown("### 📝 প্রাথমিক চিকিৎসা নির্দেশিকা (First-line Treatment Guidelines):")
-    st.code(disease_data[selected_disease]['treatment'], language="markdown")
+    # Prescription View Box
+    st.markdown(f"""
+    <div class="report-card">
+        <h4>📋 প্রজেক্ট প্রেসক্রিপশন ও মেডিকেল সামারি</h4>
+        <p><b>রোগীর নাম:</b> {patient_name} &nbsp;&nbsp;|&nbsp;&nbsp; <b>বয়স:</b> {patient_age} বছর &nbsp;&nbsp;|&nbsp;&nbsp; <b>লিঙ্গ:</b> {patient_gender}</p>
+        <p><b>ল্যাব রিপোর্টের ডেটা:</b> {criteria_msg}</p>
+        <hr>
+        <h5>🩺 প্রাথমিক চিকিৎসা গایدলাইন (First-line Management):</h5>
+        <p style='white-space: pre-line;'>{treatment}</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Medical Disclaimer Footer inside app
-    st.error("**⚠️ সতর্কতা ও ডিসক্লেইমার:** এই অ্যাপ্লিকেশনটি শুধুমাত্র প্রাথমিক ধারণা এবং লজিক টেস্টের জন্য তৈরি। রোগীর সুনির্দিষ্ট অ্যান্টিবায়োটিক ও অন্যান্য ওষুধের সঠিক ডোজ নির্ধারণের জন্য অবশ্যই একজন রেজিস্টার্ড এমবিবিএস (MBBS) চিকিৎসকের সরাসরি পরামর্শ ও প্রেসক্রিপশন নিতে হবে।")
-
-elif report_status == "না (Negative / Normal)":
-    st.info("### ℹ️ ডায়াগনসিস: ল্যাব রিপোর্ট নরমাল এসেছে।")
-    st.write("লক্ষণ থাকা সত্ত্বেও ল্যাব রিপোর্ট নেগেটিভ আসলে অন্য কোনো রোগের উপস্থিতি থাকতে পারে। অনুগ্রহ করে চিকিৎসকের শরণাপন্ন হোন।")
+    st.caption("⚠️ **মেডিকেল ডিসক্লেইমার:** এটি একটি প্রোটোটাইপ লজিক সিস্টেম। ওষুধ সেবনের পূর্বে অবশ্যই রেজিস্টার্ড ডাক্তারের সই করা প্রেসক্রিপশন মেলানো বাধ্যতামূলক।")
 else:
-    st.write("*ল্যাপ রিপোর্টের ফলাফল ইনপুট দিলে এখানে স্বয়ংক্রিয়ভাবে চিকিৎসার বিবরণ চলে আসবে।*")
+    st.success("### ℹ️ ডায়াগনসিস: ইনপুট করা ল্যাব রিপোর্টের মান সম্পূর্ণ স্বাভাবিক (Normal) সীমার মধ্যে রয়েছে।")
+    st.write("যদি রোগীর লক্ষণ তীব্র থাকে, তবে অনুগ্রহ করে একজন বিশেষজ্ঞ চিকিৎসকের সাথে সরাসরি যোগাযোগ করুন।")
